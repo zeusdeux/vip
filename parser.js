@@ -1,6 +1,6 @@
 'use strict'
 
-/* eslint no-console: 0 */
+/* eslint no-console: 0, no-use-before-define: 0 */
 
 /*
 
@@ -328,6 +328,7 @@ ASSIGNMENTEXPR = LET WS+ IDENTIFIER WS* ASSIGN WS* EXPRESSION
 
 */
 
+/* ATOMS */
 function parseNumber(tokenList) {
   const token = tokenList[0]
 
@@ -392,15 +393,41 @@ function parseAtom(tokenList) {
   return result
 }
 
+function parseExpressionWithinParens(tokenList) {
+  if ('OPENPARENS' !== tokenList[0].type) return [null, tokenList]
+
+  let result = parseExpression(tokenList.slice(1))
+
+  tokenList = result[1]
+
+  // should these smaller parsers throw errors? Cuz they know whats wrong right?
+  // for e.g., this parser knows where there's a mismatched paren
+  if (!tokenList[0] || 'CLOSEPARENS' !== tokenList[0].type) return [null, tokenList]
+
+  return [result[0], tokenList.slice(1)]
+}
+
+function parseInvocationExpr(tokenList) {
+  return [null, tokenList]
+}
+
 function parseExpression(tokenList) {
-  return parseAtom(tokenList)
+  let result = []
+  let productions = [parseAtom, parseExpressionWithinParens]
+
+  for (let production of productions) {
+    result = production(tokenList)
+
+    if (null !== result[0]) break
+  }
+  return result
 }
 
 function parseProgram(tokenList) {
   let exprs = []
 
   while(tokenList.length) {
-    // console.log(`b: ${JSON.stringify(tokenList)}`)
+    // console.log(`Tokens before parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
     if (tokenList[0].type === 'NEWLINE') {
       tokenList.shift()
@@ -412,7 +439,7 @@ function parseProgram(tokenList) {
 
     tokenList = result[1]
 
-    // console.log(`a: ${JSON.stringify(tokenList)}`)
+    // console.log(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
     if (node) exprs.push(node)
     else {
@@ -469,4 +496,6 @@ let lexer = getLexer(tokens)
 // console.log()
 // console.log(parseProgram(lexer('')))
 // console.log(parseProgram(lexer('1')))
-console.log(parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
+console.log('10.22\n123\ntrue\n"asd asd09"\nwhat\n', parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
+console.log()
+console.log('(1)(("asd"))\n',parseProgram(lexer('(1)(("asd"))')))
