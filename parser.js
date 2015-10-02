@@ -8,7 +8,7 @@
   Terminals
   -------------------------------------------------------
 
-  KEYWORDS =  fn | if | else | for | of | let
+  KEYWORDS =  fn | if | else | for | of | let | import | from | export | as
   NUMBER = INTEGER | FLOAT
   ATOM = NUMBER | BOOLEAN | STRING | IDENTIFIER
   AOPS = + | - | / | * | ^
@@ -413,6 +413,9 @@ function parseInvocationExpr(tokenList) {
 
 function parseExpression(tokenList) {
   let result = []
+  // ordering of these productions matter
+  // since we break on first match, longest matching production
+  // MUST come first or else it's gg life wp world ttyl fml xyz
   let productions = [parseAtom, parseExpressionWithinParens]
 
   for (let production of productions) {
@@ -498,4 +501,4 @@ let lexer = getLexer(tokens)
 // console.log(parseProgram(lexer('1')))
 console.log('10.22\n123\ntrue\n"asd asd09"\nwhat\n', parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
 console.log()
-console.log('(1)(("asd"))\n',parseProgram(lexer('(1)(("asd"))')))
+console.log('(1)(("asd"))\n', parseProgram(lexer('(1)(("asd"))')))
