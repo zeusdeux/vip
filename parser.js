@@ -359,19 +359,36 @@ function parseString(tokenList) {
 
   switch(token.type) {
   case 'STRING':
-    let value = 'true' === token.value ? true : false
-
-    return [createASTNode('BOOLEAN', value, token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('STRING', token.value, token.line, token.column), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
 }
 
+function parseIdentifier(tokenList) {
+  const token = tokenList[0]
+
+  switch(token.type) {
+  case 'IDENTIFIER':
+    return [createASTNode('IDENTIFIER', token.value, token.line, token.column), tokenList.slice(1)]
+  default:
+    return [null, tokenList]
+  }
+}
 
 function parseAtom(tokenList) {
   let result = null
+  let productions = [parseNumber, parseBoolean, parseString, parseIdentifier]
 
-  result = parseNumber(tokenList)
+  for (let production of productions) {
+    result = production(tokenList)
+
+    // since we know all products for Atom are terminals
+    // we break on the first match and don't look for
+    // longest match
+    if (result[0]) break
+  }
+
   return result
 }
 
@@ -383,7 +400,7 @@ function parseProgram(tokenList) {
   let exprs = []
 
   while(tokenList.length) {
-    console.log(`b: ${JSON.stringify(tokenList)}`)
+    // console.log(`b: ${JSON.stringify(tokenList)}`)
 
     if (tokenList[0].type === 'NEWLINE') {
       tokenList.shift()
@@ -395,7 +412,7 @@ function parseProgram(tokenList) {
 
     tokenList = result[1]
 
-    console.log(`a: ${JSON.stringify(tokenList)}`)
+    // console.log(`a: ${JSON.stringify(tokenList)}`)
 
     if (node) exprs.push(node)
     else {
@@ -405,11 +422,11 @@ function parseProgram(tokenList) {
 
       throw new SyntaxError(errorMsg)
     }
-    console.log(`exprs: ${JSON.stringify(exprs)}`)
-    console.log('-'.repeat(10))
+    // console.log(`exprs: ${JSON.stringify(exprs)}`)
+    // console.log('-'.repeat(10))
   }
 
-  return createASTNode('PROGRAM', exprs)
+  return createASTNode('PROGRAM', exprs, 1, 1)
 }
 
 let lexer = getLexer(tokens)
@@ -452,4 +469,4 @@ let lexer = getLexer(tokens)
 // console.log()
 // console.log(parseProgram(lexer('')))
 // console.log(parseProgram(lexer('1')))
-//console.log(parseProgram(lexer('10.22\n123')))
+console.log(parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
