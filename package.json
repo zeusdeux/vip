@@ -1,0 +1,26 @@
+{
+  "name": "vip",
+  "version": "0.0.1",
+  "description": "A small language with a handwritten lexer, parser, compiler and custom bytecode interpreting vm",
+  "main": "core/index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "keywords": [
+    "pl",
+    "vip",
+    "iheartvip",
+    "programming",
+    "language",
+    "vm",
+    "parser",
+    "compiler",
+    "lexer",
+    "bytecode"
+  ],
+  "author": "Mudit Ameta",
+  "license": "ISC",
+  "dependencies": {
+    "debug": "^2.2.0"
+  }
+}
