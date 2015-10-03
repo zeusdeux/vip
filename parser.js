@@ -2,9 +2,12 @@
 
 /* eslint no-console: 0, no-use-before-define: 0 */
 
-import tokenRules from './lexerTokens'
+import debug from 'debug'
 import getLexer from './lexer'
+import tokenRules from './lexerTokens'
 
+
+const d = debug('vip:parser')
 
 function createASTNode(type, value, line, column) {
   let node = Object.create(null)
@@ -160,7 +163,7 @@ function parseProgram(tokenList) {
   let exprs = []
 
   while(tokenList.length) {
-    // console.log(`Tokens before parsing expression:\n${JSON.stringify(tokenList)}\n`)
+    d(`Tokens before parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
     if (tokenList[0].type === 'NEWLINE') {
       tokenList.shift()
@@ -172,7 +175,7 @@ function parseProgram(tokenList) {
 
     tokenList = result[1]
 
-    // console.log(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
+    d(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
     if (node) exprs.push(node)
     else {
@@ -182,8 +185,8 @@ function parseProgram(tokenList) {
 
       throw new SyntaxError(errorMsg)
     }
-    // console.log(`exprs: ${JSON.stringify(exprs)}`)
-    // console.log('-'.repeat(10))
+    d(`exprs: ${JSON.stringify(exprs)}`)
+    d('-'.repeat(10))
   }
 
   return createASTNode('PROGRAM', exprs, 1, 1)
