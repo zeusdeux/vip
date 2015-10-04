@@ -410,7 +410,7 @@ function parseExpression(tokenList, productionsToSkip = []) {
 
   dpe('Result\n', result)
   if (!result[0]) {
-    let err = new SyntaxError(`Unexpected token ${result[1][0].value}`)
+    let err = new SyntaxError(`Unexpected token ${inspect(result[1][0].value)}`)
 
     err.line = tokenList[0].line
     err.column = tokenList[0].column
