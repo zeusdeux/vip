@@ -14,9 +14,12 @@ const dphm  = debug('vip:parser:parseHashMap')
 const dpe   = debug('vip:parser:parseExpression')
 const dpi   = debug('vip:parser:parseIdentifier')
 const dpewp = debug('vip:parser:parseExpressionWithinParens')
+const dpie = debug('vip:parser:parseInvocationExpression')
 
+
+class ASTNode {}
 function createASTNode(type, value, line, columnStart, columnEnd) {
-  let node = Object.create(null)
+  let node = Object.create(ASTNode.prototype)
 
   Object.defineProperties(node, {
     type: {
@@ -447,15 +450,8 @@ function parseProgram(tokenList) {
       dpp(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
       // if we got a node, push to our exprs array else error
-      if (node) exprs.push(node)
-      else {
-        let e = new SyntaxError('Invalid program')
+      if (node && node instanceof ASTNode) exprs.push(node)
 
-        e.line = tokenList[0].line
-        e.column = tokenList[0].column
-
-        throw e
-      }
       dpp(`exprs: ${JSON.stringify(exprs)}\n${'-'.repeat(10)}`)
 
     }
