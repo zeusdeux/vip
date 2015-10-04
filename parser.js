@@ -636,9 +636,10 @@ let lexer = getLexer(tokenRules)
 // console.log()
 
 /* Arrays */
+
 // console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4]')), null, 4))
 // console.log('-'.repeat(80))
-// console.log('[1 [1 2 3]]\n', JSON.stringify(parseProgram(lexer('[1 [1 2 3]]')), null, 4))
+// console.log('[1 [1 -20.12 3]]\n', JSON.stringify(parseProgram(lexer('[1 [1 -20.12 3]]')), null, 4))
 // console.log('-'.repeat(80))
 // console.log('[1 2 3 4 [5 "dude" true [90.11]]]', JSON.stringify(parseProgram(lexer('[1 2 3 4 [5 "dude" true [90.11]]]')), null, 4))
 // console.log('-'.repeat(80))
@@ -649,11 +650,40 @@ let lexer = getLexer(tokenRules)
 // console.log('[ 1 2 3 4 ]\n', JSON.stringify(parseProgram(lexer('[ 1 2 3 4 ]')), null, 4))
 
 /* Hashmaps */
-console.log('{ :a 20 :b "dude" }\n', JSON.stringify(parseProgram(lexer('{ :a 20 :b "dude" }\n')), null, 4))
+
+// console.log('{ :a 20 :b "dude" }\n', JSON.stringify(parseProgram(lexer('{ :a 20 :b "dude" }\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('{\n  :a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20\n  :b "dude"\n}\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('{\n  :a [1 "test man" -123]\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20\n  :b "dude"\n}\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('{\n  :a [1 "test man" -123]\n  :b "dude" :c {:_goat "https://what.org" :as123 (((0)))}\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a [1 "test man" -123]\n  :b "dude" :c {:_goat "https://what.org" :as123 (((0)))}\n}\n')), null, 4))
+
+
+/* Invocations */
+
+// console.log('-'.repeat(80))
+// console.log('add 10 20\n', JSON.stringify(parseProgram(lexer('add 10 20\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('(add 10 20)\n', JSON.stringify(parseProgram(lexer('(add 10 20\n)')), null, 4))
+
+/* Mix */
+
 console.log('-'.repeat(80))
-console.log('{\n  :a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20\n  :b "dude"\n}\n')), null, 4))
+console.log('add\n', JSON.stringify(parseProgram(lexer('add\n')), null, 4))
+console.log('-'.repeat(80))
+console.log('add 10 20\n[1 2 3]\n{\n:a -123.123\n}', JSON.stringify(parseProgram(lexer('add 10 20\n[1 2 3]\n{\n:a -123.123\n}')), null, 4))
+console.log('-'.repeat(80))
+console.log('print (add 10 20)\n', JSON.stringify(parseProgram(lexer('print (add 10 20)\n')), null, 4))
+console.log('-'.repeat(80))
+console.log('(print (add "mud"))\n', JSON.stringify(parseProgram(lexer('(print (add "mud"))\n')), null, 4))
+console.log('-'.repeat(80))
+console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n', JSON.stringify(parseProgram(lexer('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n')), null, 4))
+
+
 
 /* errors */
+
 // console.log('-'.repeat(80))
 // console.log('(11', parseProgram(lexer('(11')))
 // console.log('-'.repeat(80))
@@ -675,3 +705,7 @@ console.log('{\n  :a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{
 // console.log('{\n  a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  a 20\n  :b "dude"\n}\n')), null, 4))
 // console.log('-'.repeat(80))
 // console.log('{\n  :a 20 :b \n"dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20 :b \n"dude"\n}\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391))] ((((10)))))\n', JSON.stringify(parseProgram(lexer('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391))] ((((10)))))\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('((((((())))))', JSON.stringify(parseProgram(lexer('((((((())))))'), null, 4)))
