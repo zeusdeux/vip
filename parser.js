@@ -209,21 +209,37 @@ function parseAtom(tokenList) {
     if (result[0]) break
   }
 
+  dpat('Result\n', result)
   return result
 }
 
 function parseExpressionWithinParens(tokenList) {
-  if ('OPENPARENS' !== tokenList[0].type) return [null, tokenList]
+  let result
+  let token = tokenList[0]
 
-  let result = parseExpression(tokenList.slice(1))
+  try {
+    // match "("
+    if ('OPENPARENS' !== token.type) return [null, tokenList]
 
-  tokenList = result[1]
+    tokenList = tokenList.slice(1)
+    token = tokenList[0] // track token being sent to parseExpression
 
-  // should these smaller parsers throw errors? Cuz they know whats wrong right?
-  // for e.g., this parser knows where there's a mismatched paren
-  if (!tokenList[0] || 'CLOSEPARENS' !== tokenList[0].type) return [null, tokenList]
+    result = parseExpression(tokenList)
+    tokenList = result[1]
 
-  return [result[0], tokenList.slice(1)]
+    // look for ")"
+    if (!tokenList[0] || 'CLOSEPARENS' !== tokenList[0].type) throw new SyntaxError('Missing )')
+
+    return [result[0], tokenList.slice(1)]
+  }
+  catch(e) {
+    e.line = token.line
+    e.column = token.column
+
+    dpewp('Error object before throwing', e)
+
+    throw e
+  }
 }
 
 function parseInvocationExpr(tokenList) {
@@ -237,49 +253,90 @@ function parseExpression(tokenList) {
   // MUST come first or else it's gg life wp world ttyl fml xyz
   let productions = [parseAtom, parseExpressionWithinParens]
 
+  dpe('Token list\n', tokenList)
+
   for (let production of productions) {
+    dpe('Trying production', production.name)
+
     result = production(tokenList)
 
-    if (null !== result[0]) break
+    if (null !== result[0]) break // break on first production that matches
+  }
+
+  dpe('Result\n', result)
+  if (!result[0]) {
+    let err = new SyntaxError(`Unexpected token ${result[1][0].value}`)
+
+    err.line = tokenList[0].line
+    err.column = tokenList[0].column
+
+    throw err
   }
   return result
 }
 
 function parseProgram(tokenList) {
   let exprs = []
+  let result
 
   while(tokenList.length) {
-    d(`Tokens before parsing expression:\n${JSON.stringify(tokenList)}\n`)
+    dpp(`Tokens before parsing expression:\n${JSON.stringify(tokenList)}\n`)
 
+    // ignore new lines
     if (tokenList[0].type === 'NEWLINE') {
       tokenList.shift()
       continue
     }
 
-    let result = parseExpression(tokenList)
-    let node = result[0]
+    try {
+      dpp(`Tokens before calling parseExpression\n${JSON.stringify(tokenList)}`)
 
-    tokenList = result[1]
+      result = parseExpression(tokenList.slice()) // [ astNode, remaining token list ]
 
-    d(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
+      dpp('Result\n', result)
 
-    if (node) exprs.push(node)
-    else {
-      let firstToken = tokenList[0]
-      let sourceString = tokenList.reduce((p, token) => p += token.value, '')
-      let errorMsg = `Invalid syntax starting at line ${firstToken.line}, column ${firstToken.column}:\n${sourceString}`
+      let node = result[0]
 
-      throw new SyntaxError(errorMsg)
+      tokenList = result[1] // new token list
+
+      dpp(`Tokens after parsing expression:\n${JSON.stringify(tokenList)}\n`)
+
+      // if we got a node, push to our exprs array else error
+      if (node) exprs.push(node)
+      else {
+        let e = new SyntaxError('Invalid program')
+
+        e.line = tokenList[0].line
+        e.column = tokenList[0].column
+
+        throw e
+      }
+      dpp(`exprs: ${JSON.stringify(exprs)}\n${'-'.repeat(10)}`)
+
     }
-    d(`exprs: ${JSON.stringify(exprs)}`)
-    d('-'.repeat(10))
+    catch(e) {
+      dpp('Token list before erroring out\n', tokenList, e)
+      return yellError(tokenList, e)
+    }
   }
 
-  return createASTNode('PROGRAM', exprs, 1, 1)
+  return createASTNode('PROGRAM', exprs, 1, 1, tokenList.length)
+}
+
+function yellError(tokenList, e) {
+  let sourceString = tokenList.reduce((p, token) => {
+    if (token.line !== e.line || 'NEWLINE' === token.type) return p // skip lines on which we dont have the error or have newlines bruv
+    if ('STRING' === token.type) p += '"' + token.value + '"'
+    else p += token.value
+    return p
+  }, '')
+  let errorMsg = `SyntaxError: Invalid syntax at line ${e.line}, column ${e.column}: ${e.message}\n${sourceString}\n${'-'.repeat(e.column - 1)}^`
+
+  console.log(errorMsg)
+  process.exit(1)
 }
 
 let lexer = getLexer(tokenRules)
-
 
 
 // console.log(lexer('let a = 10'))
