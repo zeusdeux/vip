@@ -91,7 +91,16 @@ export default [
     n: 'BOOLEAN'
   },
   {
-    r: /^"(.*)"/,
+    // string dont support using double quotes within in, escaped or otherwise
+    // the reason is, if I have to do that, then I have to handle it at parse stage
+    // and not at lex stage since regular expression cannot match balance quotes
+    // so there is no way at the lex level to enforce that string must be within
+    // a pair of double quotes without making double quotes illegal withing the
+    // string body
+    // TODO: Write a string parse and remove this from here
+    // Instead, lex double quotes as separate token and then use 'em in string parser
+    // and implement all logic there
+    r: /^"([^"]*)"/,
     n: 'STRING'
   },
   {
