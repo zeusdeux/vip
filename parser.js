@@ -104,17 +104,94 @@ function parseIdentifier(tokenList) {
 
   switch(token.type) {
   case 'IDENTIFIER':
-    return [createASTNode('IDENTIFIER', token.value, token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('IDENTIFIER', token.value, token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
 }
 
+function parseArray(tokenList) {
+  let values       = []
+  let parseSuccess = true
+  let token        = tokenList[0]
+  let line, columnStart, columnEnd
+  let errorObj = { message: 'Missing a closing ] probably' }
+  let node
+
+  dpa('Incoming tokenList\n', tokenList)
+
+  if ('OPENSQBKT' !== token.type) return [null, tokenList]
+
+  // line and column where open sqbkt was matched
+  // ARRAY ast node will have these as line and column values
+  line = token.line
+  columnStart = token.column
+
+  // remove open sqbkt from token list
+  tokenList.shift()
+
+  dpa('Token list after matching "["\n', tokenList)
+
+  // now that you have parsed a square bracket, if things fail,
+  // error from here array has had a partial match so something is amiss
+  parseSuccess = false
+
+  while(tokenList.length) {
+
+    token = tokenList[0]
+
+    dpa('Token\n', token)
+
+    if ('WS' === token.type || 'NEWLINE' === token.type) {
+      tokenList.shift() // remove WS token and continue
+      continue
+    }
+    if ('CLOSESQBKT' === token.type) {
+      parseSuccess = true
+      columnEnd = token.column
+      tokenList = tokenList.slice(1) // remove "]" from token list
+      break
+    }
+    try {
+      [node, tokenList] = parseExpression(tokenList)
+      values.push(node)
+      dpa('Values\n', values)
+    }
+    catch(e) {
+      errorObj = e
+      break
+    }
+  }
+
+  dpa('Array parse successful?', parseSuccess)
+  dpa('Token before returning', token)
+  dpa('Token list before returning or erroring', tokenList)
+
+  if (parseSuccess) return [createASTNode('ARRAY', values, line, columnStart, columnEnd), tokenList]
+  // else
+  errorObj.line = token.line
+  // if there are still some token in the list,
+  // that means that the error occured while parsing a token and not cuz we ran out of tokens
+  // in that case token will be the token we errored out on
+  // try to assign it's column (we are 1 indexed so don't worry about 0 being falsy)
+  // if we were out of tokens then token = undefined and then we'll end up using
+  // where the last match ended as out error column
+  errorObj.column = tokenList.length && token && token.column || node.columnEnd
+
+  dpa('Error object before throwing', errorObj, node)
+
+  throw errorObj
+}
+
 function parseAtom(tokenList) {
   let result = null
-  let productions = [parseNumber, parseBoolean, parseString, parseIdentifier]
+  let productions = [parseNumber, parseBoolean, parseString, parseIdentifier, parseArray]
+
+  dpat('Incoming token list\n', tokenList)
 
   for (let production of productions) {
+    dpat('Trying production', production.name)
+
     result = production(tokenList)
 
     // since we know all products for Atom are terminals
@@ -230,8 +307,42 @@ let lexer = getLexer(tokenRules)
 // console.log(lexer('let a = (b == 10)'))
 // // console.log(lexer('"Asd'))
 // console.log()
-// console.log(parseProgram(lexer('')))
-// console.log(parseProgram(lexer('1')))
+console.log('\n', parseProgram(lexer('')))
+console.log('-'.repeat(80))
+console.log('1\n', parseProgram(lexer('1')))
+console.log('-'.repeat(80))
 console.log('10.22\n123\ntrue\n"asd asd09"\nwhat\n', parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
-console.log()
+console.log('-'.repeat(80))
 console.log('(1)(("asd"))\n', parseProgram(lexer('(1)(("asd"))')))
+console.log('-'.repeat(80))
+console.log('[]\n', JSON.stringify(parseProgram(lexer('[]')), null, 4))
+console.log()
+
+/* Arrays */
+console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4]')), null, 4))
+console.log('-'.repeat(80))
+console.log('[1 [1 2 3]]\n', JSON.stringify(parseProgram(lexer('[1 [1 2 3]]')), null, 4))
+console.log('-'.repeat(80))
+console.log('[1 2 3 4 [5 "dude" true [90.11]]]', JSON.stringify(parseProgram(lexer('[1 2 3 4 [5 "dude" true [90.11]]]')), null, 4))
+console.log('-'.repeat(80))
+console.log('[\n  1\n  2\n]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n]')), null, 4))
+console.log('-'.repeat(80))
+console.log('[\n  1\n  2\n["a" "b"]]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n["a" "b"]]')), null, 4))
+
+
+/* errors */
+// console.log('(11', parseProgram(lexer('(11')))
+// console.log('-'.repeat(80))
+// console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[1 [1 2 3]\n', JSON.stringify(parseProgram(lexer('[1 [1 2 3]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[1 2 3 4 [5 "dude" true [90.11]]', JSON.stringify(parseProgram(lexer('[1 2 3 4 [5 "dude" true [90.11]]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log(', 12]', JSON.stringify(parseProgram(lexer(', 12]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[1, 2]', JSON.stringify(parseProgram(lexer('[1, 2]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('-'.repeat(80))
+// console.log('[\n  1\n  2,\n]', JSON.stringify(parseProgram(lexer('[\n  1\n  2,\n]')), null, 4))
+// console.log('-'.repeat(80))
