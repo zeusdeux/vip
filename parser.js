@@ -47,7 +47,8 @@ function createASTNode(type, value, line, columnStart, columnEnd) {
 
   KEYWORDS =  fn | if | else | for | of | let
   NUMBER = INTEGER | FLOAT
-  ATOM = NUMBER | BOOLEAN | STRING | IDENTIFIER
+  ARRAY = "[" (EXPR WS+)* "]"
+  ATOM = NUMBER | BOOLEAN | STRING | ARRAY | HASHMAP | IDENTIFIER
   AOPS = + | - | / | * | ^
   LOPS = < | > | <= | >= | == | != | AND | OR | NOT
   BRACKETS = [ | ] | ( | )
@@ -75,9 +76,9 @@ function parseNumber(tokenList) {
 
   switch(token.type) {
   case 'INTEGER':
-    return [createASTNode('NUMBER', parseInt(token.value, 10), token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('NUMBER', parseInt(token.value, 10), token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
   case 'FLOAT':
-    return [createASTNode('NUMBER', parseFloat(token.value, 10), token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('NUMBER', parseFloat(token.value, 10), token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
@@ -90,7 +91,7 @@ function parseBoolean(tokenList) {
   case 'BOOLEAN':
     let value = 'true' === token.value ? true : false
 
-    return [createASTNode('BOOLEAN', value, token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('BOOLEAN', value, token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
@@ -101,7 +102,7 @@ function parseString(tokenList) {
 
   switch(token.type) {
   case 'STRING':
-    return [createASTNode('STRING', token.value, token.line, token.column), tokenList.slice(1)]
+    return [createASTNode('STRING', token.value, token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
