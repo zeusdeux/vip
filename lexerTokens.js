@@ -79,11 +79,11 @@ export default [
   },
   /* Atoms */
   {
-    r: /^\d+/,
+    r: /^-?\d+/,
     n: 'INTEGER'
   },
   {
-    r: /^\d+\.\d+/,
+    r: /^-?\d+\.\d+/,
     n: 'FLOAT'
   },
   {
