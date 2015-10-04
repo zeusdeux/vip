@@ -169,7 +169,10 @@ function parseArray(tokenList) {
       break
     }
     try {
-      [node, tokenList] = parseExpression(tokenList)
+      // as the second parameter to parseExpression, pass the parse functions
+      // for expressions that are invalid in an array.
+      // For example: parseAssignmentExpression
+      [node, tokenList] = parseExpression(tokenList/* , [parseAssignmentExpression] */)
       values.push(node)
       dpa('Values\n', values)
     }
@@ -376,12 +379,24 @@ function parseInvocationExpr(tokenList) {
   return [null, tokenList]
 }
 
-function parseExpression(tokenList) {
+// productionsToSkip is an array of productions or parse functions
+// that we want to skip
+function parseExpression(tokenList, productionsToSkip = []) {
   let result = []
   // ordering of these productions matter
   // since we break on first match, longest matching production
   // MUST come first or else it's gg life wp world ttyl fml xyz
   let productions = [parseAtom, parseExpressionWithinParens]
+
+  // remove those productions that we want to skip
+  if (productionsToSkip.length) {
+    productions = productions.filter(production => {
+      for (let i = 0; i < productionsToSkip.length; i++) {
+        if (production === productionsToSkip[i]) return false
+        return true
+      }
+    })
+  }
 
   dpe('Token list\n', tokenList)
 
