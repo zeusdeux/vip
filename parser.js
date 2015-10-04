@@ -5,12 +5,14 @@
 import debug from 'debug'
 import getLexer from './lexer'
 import tokenRules from './lexerTokens'
+import { inspect } from 'util'
 
-
-const dpa = debug('vip:parser:parseArray')
-const dpp = debug('vip:parser:parseProgram')
-const dpe = debug('vip:parser:parseExpression')
-const dpat = debug('vip:parser:parseAtom')
+const dpa   = debug('vip:parser:parseArray')
+const dpat  = debug('vip:parser:parseAtom')
+const dpp   = debug('vip:parser:parseProgram')
+const dphm  = debug('vip:parser:parseHashMap')
+const dpe   = debug('vip:parser:parseExpression')
+const dpi   = debug('vip:parser:parseIdentifier')
 const dpewp = debug('vip:parser:parseExpressionWithinParens')
 
 function createASTNode(type, value, line, columnStart, columnEnd) {
@@ -47,7 +49,8 @@ function createASTNode(type, value, line, columnStart, columnEnd) {
 
   KEYWORDS =  fn | if | else | for | of | let
   NUMBER = INTEGER | FLOAT
-  ARRAY = "[" (EXPR WS+)* "]"
+  ARRAY = "[" (WS|NEWLINE)? (EXPR (WS|NEWLINE)+)* "]"
+  HASHMAP = "{" (WS|NEWLINE)? (":" ID WS+ EXPR)* "}"
   ATOM = NUMBER | BOOLEAN | STRING | ARRAY | HASHMAP | IDENTIFIER
   AOPS = + | - | / | * | ^
   LOPS = < | > | <= | >= | == | != | AND | OR | NOT
@@ -192,9 +195,132 @@ function parseArray(tokenList) {
   throw errorObj
 }
 
+function parseHashMap(tokenList) {
+  let node
+  let values = []
+  let token = tokenList[0]
+  let parseSuccess = true
+  let line, columnStart, columnEnd
+  let errorObj = { message: 'Missing a closing } probably' }
+
+  dphm('Incoming token list\n', tokenList)
+
+  // match for "{"
+  if ('OPENCURLIES' !== token.type) return [null, tokenList]
+
+  // line and column where open sqbkt was matched
+  // HASHMAP ast node will have these as line and column values
+  line = token.line
+  columnStart = token.column
+
+  // remove open curlies from token list
+  tokenList.shift()
+
+  dphm('Token list after matching "{"\n', tokenList)
+
+  // now that you have parsed a square bracket, if things fail,
+  // error from here array has had a partial match so something is amiss
+  parseSuccess = false
+
+  while(tokenList.length) {
+    token = tokenList[0]
+
+    dphm('Token\n', token)
+
+    try {
+      if ('WS' === token.type || 'NEWLINE' === token.type) {
+        tokenList.shift() // remove WS token and continue
+        continue
+      }
+      // match for "}"
+      else if ('CLOSECURLIES' === token.type) {
+        parseSuccess = true
+        columnEnd = token.column
+        tokenList = tokenList.slice(1) // remove "]" from token list
+        break
+      }
+      else if ('COLON' === token.type) {
+        let key, value, temp
+
+        tokenList = tokenList.slice(1)
+        // :a 20
+        temp = parseIdentifier(tokenList) // get 'a' from ':a'
+
+        key = temp[0]
+        tokenList = temp[1]
+
+        dphm('Key', key)
+
+        if (!key) {
+          let failedAtToken = tokenList[0]
+
+          errorObj = new Error(`Expected an identifier and found ${inspect(failedAtToken.value)}`)
+          errorObj.line = failedAtToken.line
+          errorObj.column = failedAtToken.column
+          throw errorObj
+        }
+
+        while ('WS' === tokenList[0].type) tokenList.shift() // skip whitespaces between key and value
+
+        temp = parseExpression(tokenList/* , [parseAssignmentExpression] */)
+
+        value = temp[0]
+        tokenList = temp[1]
+
+        dphm('Value', value)
+
+        if (!value) {
+          let failedAtToken = tokenList[0]
+
+          errorObj = new Error(`Expected an expression and found ${inspect(failedAtToken.value)}`)
+          errorObj.line = failedAtToken.line
+          errorObj.column = failedAtToken.column
+          throw errorObj
+        }
+
+        values.push({ key, value })
+      }
+      else {
+        let failedAtToken = tokenList[0]
+
+        errorObj = new Error(`Expected a : and instead found ${inspect(failedAtToken.value)}`)
+        errorObj.line = failedAtToken.line
+        errorObj.column = failedAtToken.column
+        throw errorObj
+      }
+
+      dphm('Values\n', values)
+    }
+    catch(e) {
+      errorObj = e
+      break
+    }
+  }
+
+  dphm('Hashmap parse successful?', parseSuccess)
+  dphm('Token before returning', token)
+  dphm('Token list before returning or erroring', tokenList)
+
+  if (parseSuccess) return [createASTNode('HASHMAP', values, line, columnStart, columnEnd), tokenList]
+  // else
+  errorObj.line = errorObj.line || token.line
+  // if there are still some token in the list,
+  // that means that the error occured while parsing a token and not cuz we ran out of tokens
+  // in that case token will be the token we errored out on
+  // try to assign it's column (we are 1 indexed so don't worry about 0 being falsy)
+  // if we were out of tokens then token = undefined and then we'll end up using
+  // where the last match ended as out error column
+  // If we have already set the column, then leave it be
+  errorObj.column = errorObj.column || tokenList.length && token && token.column || node.columnEnd
+
+  dphm('Error object before throwing', errorObj, node)
+
+  throw errorObj
+}
+
 function parseAtom(tokenList) {
   let result = null
-  let productions = [parseNumber, parseBoolean, parseString, parseIdentifier, parseArray]
+  let productions = [parseNumber, parseBoolean, parseString, parseIdentifier, parseArray, parseHashMap]
 
   dpat('Incoming token list\n', tokenList)
 
@@ -373,30 +499,38 @@ let lexer = getLexer(tokenRules)
 // console.log(lexer('let a = (b == 10)'))
 // // console.log(lexer('"Asd'))
 // console.log()
-console.log('\n', parseProgram(lexer('')))
-console.log('-'.repeat(80))
-console.log('1\n', parseProgram(lexer('1')))
-console.log('-'.repeat(80))
-console.log('10.22\n123\ntrue\n"asd asd09"\nwhat\n', parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
-console.log('-'.repeat(80))
-console.log('(1)(("asd"))\n', parseProgram(lexer('(1)(("asd"))')))
-console.log('-'.repeat(80))
-console.log('[]\n', JSON.stringify(parseProgram(lexer('[]')), null, 4))
-console.log()
+
+// console.log('\n', parseProgram(lexer('')))
+// console.log('-'.repeat(80))
+// console.log('1\n', parseProgram(lexer('1')))
+// console.log('-'.repeat(80))
+// console.log('10.22\n123\ntrue\n"asd asd09"\nwhat\n', parseProgram(lexer('10.22\n123\ntrue\n"asd asd09"\nwhat')))
+// console.log('-'.repeat(80))
+// console.log('(1)(("asd"))\n', parseProgram(lexer('(1)(("asd"))')))
+// console.log('-'.repeat(80))
+// console.log('[]\n', JSON.stringify(parseProgram(lexer('[]')), null, 4))
+// console.log()
 
 /* Arrays */
-console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4]')), null, 4))
-console.log('-'.repeat(80))
-console.log('[1 [1 2 3]]\n', JSON.stringify(parseProgram(lexer('[1 [1 2 3]]')), null, 4))
-console.log('-'.repeat(80))
-console.log('[1 2 3 4 [5 "dude" true [90.11]]]', JSON.stringify(parseProgram(lexer('[1 2 3 4 [5 "dude" true [90.11]]]')), null, 4))
-console.log('-'.repeat(80))
-console.log('[\n  1\n  2\n]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n]')), null, 4))
-console.log('-'.repeat(80))
-console.log('[\n  1\n  2\n["a" "b"]]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n["a" "b"]]')), null, 4))
+// console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[1 [1 2 3]]\n', JSON.stringify(parseProgram(lexer('[1 [1 2 3]]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[1 2 3 4 [5 "dude" true [90.11]]]', JSON.stringify(parseProgram(lexer('[1 2 3 4 [5 "dude" true [90.11]]]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[\n  1\n  2\n]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[\n  1\n  2\n["a" "b"]]', JSON.stringify(parseProgram(lexer('[\n  1\n  2\n["a" "b"]]')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('[ 1 2 3 4 ]\n', JSON.stringify(parseProgram(lexer('[ 1 2 3 4 ]')), null, 4))
 
+/* Hashmaps */
+console.log('{ :a 20 :b "dude" }\n', JSON.stringify(parseProgram(lexer('{ :a 20 :b "dude" }\n')), null, 4))
+console.log('-'.repeat(80))
+console.log('{\n  :a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20\n  :b "dude"\n}\n')), null, 4))
 
 /* errors */
+// console.log('-'.repeat(80))
 // console.log('(11', parseProgram(lexer('(11')))
 // console.log('-'.repeat(80))
 // console.log('[1 2 3 4]\n', JSON.stringify(parseProgram(lexer('[1 2 3 4')), null, 4))
@@ -412,3 +546,8 @@ console.log('[\n  1\n  2\n["a" "b"]]', JSON.stringify(parseProgram(lexer('[\n  1
 // console.log('-'.repeat(80))
 // console.log('[\n  1\n  2,\n]', JSON.stringify(parseProgram(lexer('[\n  1\n  2,\n]')), null, 4))
 // console.log('-'.repeat(80))
+// console.log('{ : a 20 :b "dude" }\n', JSON.stringify(parseProgram(lexer('{ : a 20 :b "dude" }\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('{\n  a 20\n  :b "dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  a 20\n  :b "dude"\n}\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('{\n  :a 20 :b \n"dude"\n}\n', JSON.stringify(parseProgram(lexer('{\n  :a 20 :b \n"dude"\n}\n')), null, 4))
