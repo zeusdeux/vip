@@ -105,7 +105,8 @@ function parseString(tokenList) {
 
   switch(token.type) {
   case 'STRING':
-    return [createASTNode('STRING', token.value, token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
+    // the -1 is cuz columns are 1 indexed and the +2 is for the "" that bound the string and are pruned by the lexer
+    return [createASTNode('STRING', token.value, token.line, token.column, token.column + token.value.length - 1 + 2), tokenList.slice(1)]
   default:
     return [null, tokenList]
   }
