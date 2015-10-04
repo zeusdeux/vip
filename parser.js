@@ -509,7 +509,6 @@ function parseExpression(tokenList, productionsToSkip = []) {
     })
   }
 
-  dpe('Token list\n', tokenList)
 
   for (let production of productions) {
     dpe('Trying production', production.name)
@@ -532,6 +531,8 @@ function parseExpression(tokenList, productionsToSkip = []) {
 }
 
 function parseProgram(tokenList) {
+  let lastToken = tokenList[tokenList.length - 1]
+  let sourceLength = lastToken.column + lastToken.value.length - 1 // since columns are 1-indexed
   let exprs = []
   let result
 
@@ -569,7 +570,7 @@ function parseProgram(tokenList) {
     }
   }
 
-  return createASTNode('PROGRAM', exprs, 1, 1, tokenList.length)
+  return createASTNode('PROGRAM', exprs, 1, 1, sourceLength)
 }
 
 function yellError(tokenList, e) {
