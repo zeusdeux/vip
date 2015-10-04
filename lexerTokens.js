@@ -180,5 +180,9 @@ export default [
   {
     r: /^\}/,
     n: 'CLOSECURLIES'
+  },
+  {
+    r: /^\\/,
+    n: 'BACKSLASH'
   }
 ]
