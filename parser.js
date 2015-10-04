@@ -115,6 +115,9 @@ function parseString(tokenList) {
 function parseIdentifier(tokenList) {
   const token = tokenList[0]
 
+  dpi('Incoming token list', tokenList)
+  dpi('Token', token)
+
   switch(token.type) {
   case 'IDENTIFIER':
     return [createASTNode('IDENTIFIER', token.value, token.line, token.column, token.column + token.value.length - 1), tokenList.slice(1)]
