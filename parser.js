@@ -72,6 +72,8 @@ ATOM = NUMBER | BOOLEAN | STRING | IDENTIFIER
 
 NUMBER = INTEGER | FLOAT
 
+INVOCATIONEXPR = IDENTIFIER (WS+ EXPR)*
+
 ASSIGNMENTEXPR = LET WS+ IDENTIFIER WS* ASSIGN WS* EXPRESSION
 
 */
@@ -352,34 +354,136 @@ function parseAtom(tokenList) {
 function parseExpressionWithinParens(tokenList) {
   let result
   let token = tokenList[0]
+  let tempTokenList = []
+  // keep track of whether the parens inside the parenthesized expression are balanced
+  // so that we can capture stuff between the correct matching parens
+  // For example in (print (add 10 20))
+  // without unbalanced counter, captured tempTokenList will be [print, (, add, 10, 20]
+  // instead of [print, (, add, 10, 20, )]
+  let unbalanced = 0
+
+  dpewp('Incoming token list\n', tokenList)
 
   try {
     // match "("
     if ('OPENPARENS' !== token.type) return [null, tokenList]
 
-    tokenList = tokenList.slice(1)
-    token = tokenList[0] // track token being sent to parseExpression
+    // remove open parens
+    tokenList.shift()
 
-    result = parseExpression(tokenList)
-    tokenList = result[1]
+    // point token to new first token
+    token = tokenList[0]
+
+    dpewp('Token list after shifting out (\n', tokenList)
+    dpewp('Token', token)
+
+    // make a list of tokens between the parens
+    while(token && ('CLOSEPARENS' !== token.type || unbalanced)) {
+      let tempToken = tokenList.shift()
+
+      dpewp('temp token', tempToken)
+
+      if (!tempToken) break
+
+      if ('OPENPARENS' === tempToken.type) unbalanced++
+      if ('CLOSEPARENS' === tempToken.type) unbalanced--
+
+      tempTokenList.push(tempToken)
+
+      dpewp('temp token list\n', tempTokenList)
+      dpewp('Balance count', unbalanced)
+
+      token = tokenList[0]
+    }
+
+    dpewp('Final temp token list\n', tempTokenList)
+
+    dpewp('Remaining tokens\n', tokenList)
 
     // look for ")"
-    if (!tokenList[0] || 'CLOSEPARENS' !== tokenList[0].type) throw new SyntaxError('Missing )')
+    if (!tokenList.length || !tokenList[0] || unbalanced || 'CLOSEPARENS' !== tokenList[0].type) throw new SyntaxError('Missing )')
 
-    return [result[0], tokenList.slice(1)]
+    // shift out the closing parens ")"
+    tokenList.shift()
+
+    dpewp('Remaining tokens after shifting out ")"\n', tokenList)
+
+    result = parseExpression(tempTokenList) // parse only token between parens for expression
+    result[1] = tokenList // put back where token list should continue from in the result
+
+    dpewp('Result\n', result)
+
+    return result
   }
   catch(e) {
+    token = tempTokenList[tempTokenList.length - 1]
     e.line = token.line
     e.column = token.column
 
     dpewp('Error object before throwing', e)
-
     throw e
   }
 }
 
-function parseInvocationExpr(tokenList) {
-  return [null, tokenList]
+function parseInvocationExpression(tokenList) {
+  let token = tokenList[0]
+  let values = []
+  let identifier
+  let argCount = 0
+  let line = token.line
+  let columnStart = token.column
+  let columnEnd = token.column
+  let result
+
+  dpie('Incoming token list\n', tokenList)
+  dpie('Token', token)
+
+  if ('IDENTIFIER' !== token.type) return [null, tokenList]
+
+  let temp = parseIdentifier(tokenList)
+
+  identifier = temp[0]
+  tokenList = temp[1]
+
+  dpie('Identifier', identifier)
+
+  values.push(identifier)
+  columnEnd = identifier.columnEnd
+
+  dpie('Values', values)
+
+  while(tokenList.length) {
+    let expr
+
+    token = tokenList[0]
+
+    if ('NEWLINE' === token.type) {
+      tokenList.shift()
+      break
+    }
+    if ('WS' === token.type) {
+      tokenList.shift()
+      continue
+    }
+
+    [expr, tokenList] = parseExpression(tokenList)
+    values.push(expr)
+
+    dpie('Expression\n', expr)
+
+    columnEnd = expr.columnEnd
+    argCount++
+  }
+
+  values.push({ argCount })
+
+  dpie('Values', values)
+
+  result = [createASTNode('INVOCATIONEXPRESSION', values, line, columnStart, columnEnd), tokenList]
+
+  dpie('Result\n', result)
+
+  return result
 }
 
 // productionsToSkip is an array of productions or parse functions
@@ -389,7 +493,11 @@ function parseExpression(tokenList, productionsToSkip = []) {
   // ordering of these productions matter
   // since we break on first match, longest matching production
   // MUST come first or else it's gg life wp world ttyl fml xyz
-  let productions = [parseAtom, parseExpressionWithinParens]
+  let productions = [parseInvocationExpression, parseAtom, parseExpressionWithinParens]
+
+  dpe('Token list\n', tokenList)
+
+  if (!tokenList.length) return [[], tokenList]
 
   // remove those productions that we want to skip
   if (productionsToSkip.length) {
