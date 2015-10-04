@@ -7,9 +7,13 @@ import getLexer from './lexer'
 import tokenRules from './lexerTokens'
 
 
-const d = debug('vip:parser')
+const dpa = debug('vip:parser:parseArray')
+const dpp = debug('vip:parser:parseProgram')
+const dpe = debug('vip:parser:parseExpression')
+const dpat = debug('vip:parser:parseAtom')
+const dpewp = debug('vip:parser:parseExpressionWithinParens')
 
-function createASTNode(type, value, line, column) {
+function createASTNode(type, value, line, columnStart, columnEnd) {
   let node = Object.create(null)
 
   Object.defineProperties(node, {
@@ -25,9 +29,13 @@ function createASTNode(type, value, line, column) {
       enumerable: true,
       value: line
     },
-    column: {
+    columnStart: {
       enumerable: true,
-      value: column
+      value: columnStart
+    },
+    columnEnd: {
+      enumerable: true,
+      value: columnEnd
     }
   })
 
