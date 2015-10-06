@@ -193,14 +193,14 @@ function parseArray(tokenList) {
 
   if (parseSuccess) return [createASTNode('ARRAY', values, line, columnStart, columnEnd), tokenList]
   // else
-  errorObj.line = token.line
+  errorObj.line = errorObj.line || token.line
   // if there are still some token in the list,
   // that means that the error occured while parsing a token and not cuz we ran out of tokens
   // in that case token will be the token we errored out on
   // try to assign it's column (we are 1 indexed so don't worry about 0 being falsy)
   // if we were out of tokens then token = undefined and then we'll end up using
   // where the last match ended as out error column
-  errorObj.column = tokenList.length && token && token.column || node.columnEnd
+  errorObj.column = errorObj.column || tokenList.length && token && token.column || node.columnEnd
 
   dpa('Error object before throwing', errorObj, node)
 
@@ -417,8 +417,8 @@ function parseExpressionWithinParens(tokenList) {
   }
   catch(e) {
     token = tempTokenList[tempTokenList.length - 1]
-    e.line = token.line
-    e.column = token.column
+    e.line = e.line || token.line
+    e.column = e.column || token.column
 
     dpewp('Error object before throwing', e)
     throw e
@@ -669,16 +669,16 @@ let lexer = getLexer(tokenRules)
 
 /* Mix */
 
-console.log('-'.repeat(80))
-console.log('add\n', JSON.stringify(parseProgram(lexer('add\n')), null, 4))
-console.log('-'.repeat(80))
-console.log('add 10 20\n[1 2 3]\n{\n:a -123.123\n}', JSON.stringify(parseProgram(lexer('add 10 20\n[1 2 3]\n{\n:a -123.123\n}')), null, 4))
-console.log('-'.repeat(80))
-console.log('print (add 10 20)\n', JSON.stringify(parseProgram(lexer('print (add 10 20)\n')), null, 4))
-console.log('-'.repeat(80))
-console.log('(print (add "mud"))\n', JSON.stringify(parseProgram(lexer('(print (add "mud"))\n')), null, 4))
-console.log('-'.repeat(80))
-console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n', JSON.stringify(parseProgram(lexer('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('add\n', JSON.stringify(parseProgram(lexer('add\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('add 10 20\n[1 2 3]\n{\n:a -123.123\n}', JSON.stringify(parseProgram(lexer('add 10 20\n[1 2 3]\n{\n:a -123.123\n}')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('print (add 10 20)\n', JSON.stringify(parseProgram(lexer('print (add 10 20)\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('(print (add "mud"))\n', JSON.stringify(parseProgram(lexer('(print (add "mud"))\n')), null, 4))
+// console.log('-'.repeat(80))
+// console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n', JSON.stringify(parseProgram(lexer('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391)))] ((((10)))))\n')), null, 4))
 
 
 
@@ -709,3 +709,7 @@ console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :
 // console.log('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391))] ((((10)))))\n', JSON.stringify(parseProgram(lexer('(add (sub 10 "mud") ["a" "b" { :name "mudit" :age 27 :x -123.0129 :y 292} (((1098391))] ((((10)))))\n')), null, 4))
 // console.log('-'.repeat(80))
 // console.log('((((((())))))', JSON.stringify(parseProgram(lexer('((((((())))))'), null, 4)))
+// console.log('-'.repeat(80))
+// console.log('[(])', parseProgram(lexer('[(])')))
+// console.log('-'.repeat(80))
+console.log('add 10 20\nprint "dude what"\n[(])\ntest [1 2 3 4] {:a 10 :b 20}', parseProgram(lexer('add 10 20\nprint "dude what"\n[(])\ntest [1 2 3 4] {:a 10 :b 20}')))
